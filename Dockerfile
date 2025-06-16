@@ -1,28 +1,28 @@
-name: Java CI with Maven
+# Use an official Maven image to build the application
+FROM maven:3.9.3-eclipse-temurin-17 AS build
 
-on:
-  push:
-    branches: [ "main" ]
+# Set working directory
+WORKDIR /app
 
-jobs:
-  build:
-    runs-on: self-hosted
+# Copy the pom.xml and download dependencies (better for caching)
+COPY pom.xml .
+RUN mvn dependency:go-offline
 
-    steps:
-    - uses: actions/checkout@v4
+# Copy source code and build the project
+COPY src ./src
+RUN mvn package -DskipTests
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: maven
+# Use a minimal JDK image for running the app
+FROM eclipse-temurin:17-jdk-alpine
 
-    - name: Build Docker Image (java-quotes-app)
-      run: docker build -t java-quotes-app .
+# Set working directory
+WORKDIR /app
 
-    - name: Run Docker Container (java-quotes-app)
-      run: docker run -d -p 8000:8000 --name container java-quotes-app
+# Copy the built jar file from the builder stage
+COPY --from=build /app/target/*.jar app.jar
 
-    - name: Update dependency graph
-      uses: advanced-security/maven-dependency-submission-action@571e99aab1055c2e71a1e2309b9691de18d6b7d6
+# Expose application port
+EXPOSE 8000
+
+# Run the application
+ENTRYPOINT ["java", "-jar", "app.jar"]

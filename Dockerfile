@@ -1,24 +1,28 @@
-# Use the official OpenJDK 17 image as the base image
-FROM openjdk:17-jdk-alpine
+name: Java CI with Maven
 
-# Set metadata
-LABEL maintainer="zuhaibahmed001@gmail.com"
-LABEL version="1.0"
-LABEL description="A Java Quotes application"
+on:
+  push:
+    branches: [ "main" ]
 
-# Set the working directory inside the container
-WORKDIR /app
+jobs:
+  build:
+    runs-on: self-hosted
 
-# Copy the source code into the container
-COPY src/Main.java /app/Main.java
+    steps:
+    - uses: actions/checkout@v4
 
-COPY quotes.txt quotes.txt
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
 
-# Compile the Java code
-RUN javac Main.java
+    - name: Build Docker Image (java-quotes-app)
+      run: docker build -t java-quotes-app .
 
-# Expose port 8000 for the HTTP server
-EXPOSE 8000
+    - name: Run Docker Container (java-quotes-app)
+      run: docker run -d -p 8000:8000 --name container java-quotes-app
 
-# Run the Java application when the container starts
-CMD ["java", "Main"]
+    - name: Update dependency graph
+      uses: advanced-security/maven-dependency-submission-action@571e99aab1055c2e71a1e2309b9691de18d6b7d6
